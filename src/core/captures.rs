@@ -10,8 +10,8 @@ pub fn check_captures(board: &mut [[i32; 19]; 19], y: usize, x: usize) -> i32 {
     let opponent = if player == 1 { 2 } else { 1 };
 
     let directions = [
-        (0, 1), (0, -1), (1, 0), (-1, 0),   // 上下左右
-        (1, 1), (1, -1), (-1, 1), (-1, -1)  // 斜め
+        (0, 1), (0, -1), (1, 0), (-1, 0),
+        (1, 1), (1, -1), (-1, 1), (-1, -1)
     ];
     
     for (dy, dx) in directions.iter() {
