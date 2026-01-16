@@ -6,17 +6,19 @@ use core::GameState;
 use io::{Interface, CliInterface, GuiInterface};
 
 fn main() {
-    println!("Do you want to play CLI gomoku (1) or GUI gomoku (2)?");
-    let mut choice = String::new();
-    stdio::stdin().read_line(&mut choice).expect("Failed to read line");
+    let interface: Box<dyn Interface> = loop {
+        println!("Do you want to play CLI gomoku (1) or GUI gomoku (2)?");
+        let mut choice = String::new();
+        stdio::stdin().read_line(&mut choice).expect("Failed to read line");
 
-    let mut state = GameState::new();
-
-    let interface: Box<dyn Interface> = match choice.trim() {
-        "2" => Box::new(GuiInterface),
-        _ => Box::new(CliInterface),
+        match choice.trim() {
+            "1" => break Box::new(CliInterface),
+            "2" => break Box::new(GuiInterface),
+            _ => println!("Invalid choice. Please enter 1 or 2.\n"),
+        }
     };
 
+    let mut state = GameState::new();
     game_loop(&mut state, interface.as_ref());
 }
 
