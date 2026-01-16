@@ -1,3 +1,6 @@
+mod cli;
+mod gui;
+
 fn main() {
     println!("Do you want to play CLI gomoku (1) or GUI gomoku (2)?");
 
@@ -6,12 +9,13 @@ fn main() {
 
     match choice.trim() {
         "1" => {
-            cli_gomoku::start_game();
+            cli::cli_gomoku::start_game();
         }
         "2" => {
-            gui_gomoku::start_game();
+            gui::gui_gomoku::start_game();
         }
         _ => {
             println!("Invalid choice. Please enter 1 or 2.");
         }
     }
+}
