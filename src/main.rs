@@ -1,5 +1,6 @@
 mod cli;
 mod gui;
+mod core;
 
 fn main() {
     println!("Do you want to play CLI gomoku (1) or GUI gomoku (2)?");

@@ -1,1 +1,1 @@
-/home/akunegel/Desktop/Gomoku/target/debug/gomoku: /home/akunegel/Desktop/Gomoku/src/main.rs
+/home/akunegel/Desktop/Gomoku/target/debug/gomoku: /home/akunegel/Desktop/Gomoku/src/ai.rs /home/akunegel/Desktop/Gomoku/src/cli/cli_gomoku.rs /home/akunegel/Desktop/Gomoku/src/cli/mod.rs /home/akunegel/Desktop/Gomoku/src/core/game_state.rs /home/akunegel/Desktop/Gomoku/src/core/mod.rs /home/akunegel/Desktop/Gomoku/src/core/rules.rs /home/akunegel/Desktop/Gomoku/src/gui/gui_gomoku.rs /home/akunegel/Desktop/Gomoku/src/gui/mod.rs /home/akunegel/Desktop/Gomoku/src/main.rs
