@@ -19,4 +19,8 @@ impl GameState {
         self.board[y][x] = player as u8;
         self.turn_count += 1;
     }
+
+    pub fn current_player(&self) -> u8 {
+        ((self.turn_count % 2) + 1) as u8
+    }
 }
