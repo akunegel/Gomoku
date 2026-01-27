@@ -1,35 +1,36 @@
-use crate::core::captures;
+use super::rules::{capture, win};
 
+#[derive(Clone)]
 pub struct GameState {
-    pub board: [[i32; 19]; 19],
-    pub is_black_turn: bool,
-    pub black_captures: i32,
-    pub white_captures: i32,
-    pub winner: i32,
+    pub board: [[u8; 19]; 19],
+    pub captures: [u32; 2],
+    pub turn_count: u32,
 }
 
 impl GameState {
     pub fn new() -> Self {
-        Self {
+        GameState {
             board: [[0; 19]; 19],
-            is_black_turn: true,
-            black_captures: 0,
-            white_captures: 0,
-            winner: 0,
+            captures: [0, 0],
+            turn_count: 0,
         }
     }
 
-    pub fn place_stone(&mut self, y: usize, x: usize) {
-        if self.winner != 0 || self.board[y][x] != 0 { return; }
+    pub fn current_player(&self) -> u8 {
+        ((self.turn_count % 2) + 1) as u8
+    }
 
-        let player = if self.is_black_turn { 1 } else { 2 };
+    pub fn place_piece(&mut self, x: usize, y: usize) {
+        let player = self.current_player();
         self.board[y][x] = player;
 
-        let count = captures::check_captures(&mut self.board, y, x);
-        
-        if self.is_black_turn { self.black_captures += count; } 
-        else { self.white_captures += count; }
+        let captured = capture::apply_captures(&mut self.board, y, x);
+        self.captures[(player - 1) as usize] += captured;
 
-        self.is_black_turn = !self.is_black_turn;
+        self.turn_count += 1;
+    }
+
+    pub fn check_win(&self) -> Option<u8> {
+        win::check_win(&self.board, &self.captures)
     }
 }
