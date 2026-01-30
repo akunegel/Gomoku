@@ -1,3 +1,4 @@
+extern crate macroquad;
 mod core;
 mod io;
 
@@ -5,8 +6,9 @@ use std::io as stdio;
 use core::GameState;
 use io::{Interface, CliInterface, GuiInterface};
 
-fn main() {
-    let interface: Box<dyn Interface> = loop {
+#[macroquad::main("Gomoku")]
+async fn main() {
+    let mut interface: Box<dyn Interface> = loop {
         println!("Do you want to play CLI gomoku (1) or GUI gomoku (2)?");
         let mut choice = String::new();
         stdio::stdin().read_line(&mut choice).expect("Failed to read line");
@@ -19,10 +21,10 @@ fn main() {
     };
 
     let mut state = GameState::new();
-    game_loop(&mut state, interface.as_ref());
+    game_loop(&mut state, interface.as_mut()).await;
 }
 
-fn game_loop(state: &mut GameState, interface: &dyn Interface) {
+async fn game_loop(state: &mut GameState, interface: &mut dyn Interface) {
     loop {
         interface.render(state);
 
@@ -31,5 +33,6 @@ fn game_loop(state: &mut GameState, interface: &dyn Interface) {
                 state.place_piece(x, y);
             }
         }
+        interface.wait().await;
     }
 }
