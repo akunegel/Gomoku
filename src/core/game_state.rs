@@ -1,20 +1,34 @@
 use super::rules::{capture, win, double_three};
 
+#[derive(PartialEq, Clone, Copy, Debug)]
+pub enum GameMode {
+    PVP,
+    PVA,
+}
+
 #[derive(Clone)]
 pub struct GameState {
     pub board: [[u8; 19]; 19],
     pub captures: [u32; 2],
     pub turn_count: u32,
     pub winner: Option<u8>,
+    pub last_ai_time: f64,
+    pub five_aligned_winner: Option<u8>,
+    pub mode: GameMode,
+    pub hint_move: Option<(usize, usize)>,
 }
 
 impl GameState {
-    pub fn new() -> Self {
+    pub fn new(mode: GameMode) -> Self {
         GameState {
             board: [[0; 19]; 19],
             captures: [0, 0],
             turn_count: 0,
             winner: None,
+            last_ai_time: 0.0,
+            five_aligned_winner: None,
+            mode,
+            hint_move: None,
         }
     }
 
@@ -50,5 +64,40 @@ impl GameState {
 
     pub fn check_win(&self) -> Option<u8> {
         win::check_win(&self.board, &self.captures)
+    }
+
+    pub fn is_five_broken(&self, player: u8) -> bool {
+        self.check_win_by_alignment() != Some(player)
+    }
+
+    pub fn check_win_by_alignment(&self) -> Option<u8> {
+        let directions = [(0, 1), (1, 0), (1, 1), (1, -1)];
+
+        for y in 0..19 {
+            for x in 0..19 {
+                let player = self.board[y][x];
+                if player == 0 { 
+                    continue;
+                }
+                for (dy, dx) in directions {
+                    let mut count = 1;
+                    for i in 1..5 {
+                        let ny = y as i32 + dy * i;
+                        let nx = x as i32 + dx * i;
+                        
+                        if ny >= 0 && ny < 19 && nx >= 0 && nx < 19 
+                           && self.board[ny as usize][nx as usize] == player {
+                            count += 1;
+                        } else {
+                            break;
+                        }
+                    }
+                    if count >= 5 {
+                        return Some(player);
+                    }
+                }
+            }
+        }
+        None
     }
 }

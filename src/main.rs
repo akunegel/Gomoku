@@ -4,6 +4,7 @@ mod io;
 
 use std::io as stdio;
 use core::GameState;
+// use std::time::Instant;
 use io::{Interface, CliInterface, GuiInterface};
 
 
@@ -20,8 +21,17 @@ async fn main() {
             _ => println!("Invalid choice. Please enter 1 or 2.\n"),
         }
     };
-
-    let mut state = GameState::new();
+    let mode = loop {
+        println!("Select Mode: (1) Human vs Human [PVP], (2) Human vs AI [PVA]");
+        let mut choice = String::new();
+        stdio::stdin().read_line(&mut choice).expect("Failed");
+        match choice.trim() {
+            "1" => break core::game_state::GameMode::PVP,
+            "2" => break core::game_state::GameMode::PVA,
+            _ => println!("Invalid choice."),
+        }
+    };
+    let mut state = GameState::new(mode);
     game_loop(&mut state, interface.as_mut()).await;
 }
 
@@ -30,28 +40,61 @@ async fn game_loop(state: &mut GameState, interface: &mut dyn Interface) {
         interface.render(state);
 
         if state.winner.is_none() {
-            if let Some(winner) = state.check_win() {
-                state.winner = Some(winner);
-                println!("Game Over! Winner is: {}", if winner == 1 { "BLACK" } else { "WHITE" });
-                interface.render(state);
-            } else {
-                let current_p = state.current_player();
+            if interface.is_key_pressed('H') {
+                println!("Hint requested. AI is thinking...");
+                state.hint_move = core::ai::minimax::find_best_move(state);
+            }
+            let current_p = state.current_player();
 
-                if current_p == 1 {
-                    if let Some((x, y)) = interface.get_move(state) {
-                        match state.can_place_piece(x, y) {
-                            Ok(()) => state.place_piece(x, y),
-                            Err(e) => println!("Invalid move: {}", e),
-                        }
+            let maybe_move = match state.mode {
+                core::game_state::GameMode::PVP => {
+                    interface.get_move(state)
+                }
+                core::game_state::GameMode::PVA => {
+                    if current_p == 1 {
+                        interface.get_move(state)
+                    } else {
+                        println!("AI is thinking...");
+                        let start_time = std::time::Instant::now();
+                        let res = core::ai::minimax::find_best_move(state);
+                        let duration = start_time.elapsed();
+                        state.last_ai_time = duration.as_secs_f64();
+                        res
                     }
-                } else {
-                    if let Some((x, y)) = core::ai::minimax::find_best_move(state) {
+                }
+            };
+
+            if let Some((x, y)) = maybe_move {
+                match state.can_place_piece(x, y) {
+                    Ok(()) => {
                         state.place_piece(x, y);
-                        println!("AI placed at ({}, {})", x, y);
-                    }
+                        state.hint_move = None;
+
+                        if let Some(pending_winner) = state.five_aligned_winner {
+                            if state.is_five_broken(pending_winner) {
+                                state.five_aligned_winner = None;
+                                println!("The five-in-a-row was broken! Game continues.");
+                            } else {
+                                state.winner = Some(pending_winner);
+                                println!("Game Over! {} won (Five sustained)!", if pending_winner == 1 { "BLACK" } else { "WHITE" });
+                            }
+                        }
+
+                        if state.captures[0] >= 10 { state.winner = Some(1); }
+                        else if state.captures[1] >= 10 { state.winner = Some(2); }
+
+                        if state.winner.is_none() && state.five_aligned_winner.is_none() {
+                            if let Some(w) = state.check_win_by_alignment() {
+                                state.five_aligned_winner = Some(w);
+                                println!("Five in a row! Next player, try to break it!");
+                            }
+                        }
+                    },
+                    Err(e) => println!("Invalid move: {}", e),
                 }
             }
         }
+
         interface.wait().await;
     }
 }

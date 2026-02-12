@@ -12,20 +12,28 @@ impl Interface for CliInterface {
         }
         println!();
 
-        for x in 0..19 {
-            for y in 0..19 {
-                match state.board[y][x] {
+        for y in 0..19 {
+            print!("{:02} ", y);
+            for x in 0..19 {
+                if state.hint_move == Some((x, y)) {
+                    print!(" H ");
+                } else {
+                    match state.board[y][x] {
                     0 => print!(" . "),
                     1 => print!(" X "),
                     2 => print!(" O "),
                     _ => print!(" ? "),
-                }
+                    }
+                } 
             }
             println!();
         }
         println!("\n--- Score ---");
         println!("Black (X) Captures: {}", state.captures[0]);
         println!("White (O) Captures: {}", state.captures[1]);
+        if state.last_ai_time > 0.0 {
+            println!("AI Time: {:.4}s", state.last_ai_time);
+        }
         println!("----------------\n");
     }
 
@@ -40,6 +48,10 @@ impl Interface for CliInterface {
         let x = parts[0].parse::<usize>().ok()?;
         let y = parts[1].parse::<usize>().ok()?;
         Some((x, y))
+    }
+
+    fn is_key_pressed(&self, _key: char) -> bool {
+        false
     }
     fn wait(&mut self) -> Pin<Box<dyn Future<Output = ()> + '_>> {
         Box::pin(async {})

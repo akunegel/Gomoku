@@ -48,12 +48,24 @@ impl Interface for GuiInterface {
             }
         }
 
+        if let Some((hx, hy)) = state.hint_move {
+            const H_CELL_SIZE: f32 = 30.0;
+            const H_OFFSET: f32 = 40.0;
+            
+            let cx = H_OFFSET + hx as f32 * H_CELL_SIZE;
+            let cy = H_OFFSET + hy as f32 * H_CELL_SIZE;
+
+            draw_circle(cx, cy, H_CELL_SIZE * 0.4, Color::new(1.0, 1.0, 0.0, 0.6));
+            draw_circle_lines(cx, cy, H_CELL_SIZE * 0.4, 2.0, YELLOW);
+        }
+
         let player_name = if state.current_player() == 1 { "BLACK" } else { "WHITE" };
         draw_text(&format!("Turn: {}", player_name), 620.0, 50.0, 30.0, DARKGRAY);
         draw_text("Captures:", 620.0, 100.0, 25.0, DARKGRAY);
         draw_text(&format!("Black: {}", state.captures[0]), 620.0, 130.0, 25.0, BLACK);
         draw_text(&format!("White: {}", state.captures[1]), 620.0, 160.0, 25.0, WHITE);
-        // draw_text(&format!("AI Time: {:.3}s", state.last_ai_time), 620.0, 220.0, 20.0, GRAY);
+        let timer_text = format!("AI Time: {:.4}s", state.last_ai_time);
+        draw_text(&timer_text, 20.0, 40.0, 30.0, BLACK);
     }
 
     fn get_move(&mut self, state: &GameState) -> Option<(usize, usize)> {
@@ -76,5 +88,12 @@ impl Interface for GuiInterface {
         Box::pin(async {
             next_frame().await;
         })
+    }
+
+    fn is_key_pressed(&self, key: char) -> bool {
+        match key {
+            'H' => macroquad::prelude::is_key_pressed(KeyCode::H),
+            _ => false,
+        }
     }
 }

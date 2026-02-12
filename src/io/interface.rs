@@ -6,4 +6,6 @@ pub trait Interface {
     fn render(&mut self, state: &GameState);
     fn get_move(&mut self, state: &GameState) -> Option<(usize, usize)>;
     fn wait(&mut self) -> Pin<Box<dyn Future<Output = ()> + '_>>;
+    fn is_key_pressed(&self, key: char) -> bool;
 }
+
