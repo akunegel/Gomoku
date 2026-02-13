@@ -1,4 +1,4 @@
-use super::rules::{capture, win, double_three};
+use super::rules::{capture, double_three};
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub enum GameMode {
@@ -53,30 +53,50 @@ impl GameState {
     }
 
     pub fn place_piece(&mut self, x: usize, y: usize) {
-        let player = self.current_player();
-        self.board[y][x] = player;
+        if self.winner.is_some() { return; }
+
+        let p_current = self.current_player();
+        let opponent = if p_current == 1 { 2 } else { 1 };
+
+        self.board[y][x] = p_current;
 
         let captured = capture::apply_captures(&mut self.board, y, x);
-        self.captures[(player - 1) as usize] += captured;
+        self.captures[(p_current - 1) as usize] += captured;
+
+        if self.captures[(p_current - 1) as usize] >= 10 {
+            self.winner = Some(p_current);
+            return;
+        }
+
+        if let Some(pending) = self.five_aligned_winner {
+            if pending == opponent {
+                if self.has_five_aligned(opponent) {
+                    self.winner = Some(opponent);
+                    return;
+                } else {
+                    println!("The five-in-a-row was broken! Game continues.");
+                    self.five_aligned_winner = None;
+                }
+            }
+        }
+
+        if self.has_five_aligned(p_current) {
+            self.five_aligned_winner = Some(p_current);
+            println!("Five in a row! Next player, try to break it!");
+        }
 
         self.turn_count += 1;
-    }
+    } 
 
-    pub fn check_win(&self) -> Option<u8> {
-        win::check_win(&self.board, &self.captures)
-    }
 
-    pub fn is_five_broken(&self, player: u8) -> bool {
-        self.check_win_by_alignment() != Some(player)
-    }
-
-    pub fn check_win_by_alignment(&self) -> Option<u8> {
+    pub fn has_five_aligned(&self, target_player: u8) -> bool {
         let directions = [(0, 1), (1, 0), (1, 1), (1, -1)];
 
         for y in 0..19 {
             for x in 0..19 {
                 let player = self.board[y][x];
-                if player == 0 { 
+                // 探しているプレイヤー以外の石は無視する！
+                if player != target_player { 
                     continue;
                 }
                 for (dy, dx) in directions {
@@ -93,11 +113,11 @@ impl GameState {
                         }
                     }
                     if count >= 5 {
-                        return Some(player);
+                        return true; // 5連を見つけたらtrue
                     }
                 }
             }
         }
-        None
+        false
     }
 }

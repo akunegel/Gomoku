@@ -6,7 +6,7 @@ pub struct CliInterface;
 
 impl Interface for CliInterface {
     fn render(&mut self, state: &GameState) {
-        print!("");
+        print!("   ");
         for x in 0..19 {
             print!("{:02} ", x); 
         }

@@ -4,7 +4,6 @@ mod io;
 
 use std::io as stdio;
 use core::GameState;
-// use std::time::Instant;
 use io::{Interface, CliInterface, GuiInterface};
 
 
@@ -70,24 +69,8 @@ async fn game_loop(state: &mut GameState, interface: &mut dyn Interface) {
                         state.place_piece(x, y);
                         state.hint_move = None;
 
-                        if let Some(pending_winner) = state.five_aligned_winner {
-                            if state.is_five_broken(pending_winner) {
-                                state.five_aligned_winner = None;
-                                println!("The five-in-a-row was broken! Game continues.");
-                            } else {
-                                state.winner = Some(pending_winner);
-                                println!("Game Over! {} won (Five sustained)!", if pending_winner == 1 { "BLACK" } else { "WHITE" });
-                            }
-                        }
-
-                        if state.captures[0] >= 10 { state.winner = Some(1); }
-                        else if state.captures[1] >= 10 { state.winner = Some(2); }
-
-                        if state.winner.is_none() && state.five_aligned_winner.is_none() {
-                            if let Some(w) = state.check_win_by_alignment() {
-                                state.five_aligned_winner = Some(w);
-                                println!("Five in a row! Next player, try to break it!");
-                            }
+                        if let Some(w) = state.winner {
+                            println!("Game Over! Player {} won!", w);
                         }
                     },
                     Err(e) => println!("Invalid move: {}", e),
