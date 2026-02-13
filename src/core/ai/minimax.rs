@@ -4,9 +4,23 @@ pub fn find_best_move(state: &GameState) -> Option<(usize, usize)> {
     let current_p = state.current_player();
     let mut best_score = if current_p == 2 { i32::MAX } else { i32::MIN };
     let mut best_move = None;
-    let depth = 2; 
-
-    let candidates = get_candidates(state);
+    let depth = 4; 
+    let is_maximizing = current_p == 1;
+    let mut candidates = get_candidates(state);
+    candidates.sort_by_cached_key(|&(x, y)| {
+        let mut temp = state.clone();
+        if temp.can_place_piece(x, y).is_ok() {
+            temp.place_piece(x, y);
+            let score = evaluate_board(&temp);
+            if is_maximizing {
+                -score
+            } else {
+                score
+            }
+        } else {
+            0
+        }
+    }); 
 
     for (x, y) in candidates {
         if state.can_place_piece(x, y).is_ok() {
@@ -66,11 +80,18 @@ fn alpha_beta(state: &GameState, depth: u32, mut alpha: i32, mut beta: i32, is_m
         return evaluate_board(state);
     }
 
-    let candidates = get_candidates(state);
+    let mut candidates = get_candidates(state);
+
+    candidates.sort_by_cached_key(|&(x, y)| {
+        let dx = x as i32 - 9;
+        let dy = y as i32 - 9;
+        dx * dx + dy * dy
+    });
+    let limited_candidates = candidates.into_iter().take(20);
 
     if is_maximizing {
         let mut max_eval = i32::MIN;
-        for (x, y) in candidates {
+        for (x, y) in limited_candidates {
             if state.can_place_piece(x, y).is_ok() {
                 let mut temp_state = state.clone();
                 temp_state.place_piece(x, y); 
@@ -83,7 +104,7 @@ fn alpha_beta(state: &GameState, depth: u32, mut alpha: i32, mut beta: i32, is_m
         max_eval
     } else {
         let mut min_eval = i32::MAX;
-        for (x, y) in candidates {
+        for (x, y) in limited_candidates {
             if state.can_place_piece(x, y).is_ok() {
                 let mut temp_state = state.clone();
                 temp_state.place_piece(x, y);
@@ -103,8 +124,16 @@ fn evaluate_board(state: &GameState) -> i32 {
     }
 
     let mut score = 0;
-    score += (state.captures[0] as i32) * 50000;
-    score -= (state.captures[1] as i32) * 50000;
+    if let Some(pending) = state.five_aligned_winner {
+        let pending_score = 800000;
+        if pending == 1 {
+            score += pending_score;
+        } else {
+            score -= pending_score;
+        }
+    }
+    score += (state.captures[0] as i32).pow(2) * 5000;
+    score -= (state.captures[1] as i32).pow(2) * 5000;
 
     for y in 0..19 {
         for x in 0..19 {
