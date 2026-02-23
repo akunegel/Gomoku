@@ -6,6 +6,8 @@ use std::io as stdio;
 use core::GameState;
 use io::{Interface, CliInterface, GuiInterface};
 
+use crate::core::zobrist::Zobrist;
+
 
 #[macroquad::main("Gomoku")]
 async fn main() {
@@ -31,17 +33,18 @@ async fn main() {
         }
     };
     let mut state = GameState::new(mode);
-    game_loop(&mut state, interface.as_mut()).await;
+    let zobrist = Zobrist::new();
+    game_loop(&mut state, interface.as_mut(), &zobrist).await;
 }
 
-async fn game_loop(state: &mut GameState, interface: &mut dyn Interface) {
+async fn game_loop(state: &mut GameState, interface: &mut dyn Interface, zobrist: &Zobrist) {
     loop {
         interface.render(state);
 
         if state.winner.is_none() {
             if interface.is_key_pressed('H') {
                 println!("Hint requested. AI is thinking...");
-                state.hint_move = core::ai::minimax::find_best_move(state);
+                state.hint_move = core::ai::minimax::find_best_move(state, zobrist);
             }
             let current_p = state.current_player();
 
@@ -55,7 +58,7 @@ async fn game_loop(state: &mut GameState, interface: &mut dyn Interface) {
                     } else {
                         println!("AI is thinking...");
                         let start_time = std::time::Instant::now();
-                        let res = core::ai::minimax::find_best_move(state);
+                        let res = core::ai::minimax::find_best_move(state, zobrist);
                         let duration = start_time.elapsed();
                         state.last_ai_time = duration.as_secs_f64();
                         res
@@ -66,7 +69,7 @@ async fn game_loop(state: &mut GameState, interface: &mut dyn Interface) {
             if let Some((x, y)) = maybe_move {
                 match state.can_place_piece(x, y) {
                     Ok(()) => {
-                        state.place_piece(x, y);
+                        state.place_piece(x, y, zobrist);
                         state.hint_move = None;
 
                         if let Some(w) = state.winner {

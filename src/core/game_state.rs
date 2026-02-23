@@ -1,5 +1,5 @@
 use super::rules::{capture, double_three};
-
+use crate::core::zobrist::Zobrist;
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub enum GameMode {
     PVP,
@@ -9,6 +9,7 @@ pub enum GameMode {
 #[derive(Clone)]
 pub struct GameState {
     pub board: [[u8; 19]; 19],
+    pub hash: u64,
     pub captures: [u32; 2],
     pub turn_count: u32,
     pub winner: Option<u8>,
@@ -22,6 +23,7 @@ impl GameState {
     pub fn new(mode: GameMode) -> Self {
         GameState {
             board: [[0; 19]; 19],
+            hash: 0,
             captures: [0, 0],
             turn_count: 0,
             winner: None,
@@ -52,17 +54,21 @@ impl GameState {
         Ok(())
     }
 
-    pub fn place_piece(&mut self, x: usize, y: usize) {
+    pub fn place_piece(&mut self, x: usize, y: usize, zobrist: &Zobrist) {
         if self.winner.is_some() { return; }
 
         let p_current = self.current_player();
         let opponent = if p_current == 1 { 2 } else { 1 };
 
         self.board[y][x] = p_current;
+        self.update_hash(x, y, p_current, zobrist);
+        let captured_coords = capture::apply_captures(&mut self.board, y, x);
+        
+        for (cx, cy) in &captured_coords {
+            self.update_hash(*cx, *cy, opponent, zobrist); 
+        }
 
-        let captured = capture::apply_captures(&mut self.board, y, x);
-        self.captures[(p_current - 1) as usize] += captured;
-
+        self.captures[(p_current - 1) as usize] += captured_coords.len() as u32;
         if self.captures[(p_current - 1) as usize] >= 10 {
             self.winner = Some(p_current);
             return;
@@ -74,7 +80,7 @@ impl GameState {
                     self.winner = Some(opponent);
                     return;
                 } else {
-                    println!("The five-in-a-row was broken! Game continues.");
+                    // println!("The five-in-a-row was broken! Game continues.");
                     self.five_aligned_winner = None;
                 }
             }
@@ -82,7 +88,7 @@ impl GameState {
 
         if self.has_five_aligned(p_current) {
             self.five_aligned_winner = Some(p_current);
-            println!("Five in a row! Next player, try to break it!");
+            // println!("Five in a row! Next player, try to break it!");
         }
 
         self.turn_count += 1;
@@ -95,7 +101,6 @@ impl GameState {
         for y in 0..19 {
             for x in 0..19 {
                 let player = self.board[y][x];
-                // 探しているプレイヤー以外の石は無視する！
                 if player != target_player { 
                     continue;
                 }
@@ -113,11 +118,18 @@ impl GameState {
                         }
                     }
                     if count >= 5 {
-                        return true; // 5連を見つけたらtrue
+                        return true;
                     }
                 }
             }
         }
         false
+    }
+
+    pub fn update_hash(&mut self, x: usize, y: usize, player: u8, zobrist: &Zobrist) {
+        if player == 0 {
+            return;
+        }
+        self.hash ^= zobrist.get_value(x, y, player);
     }
 }

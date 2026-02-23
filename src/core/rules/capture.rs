@@ -1,11 +1,17 @@
-pub fn apply_captures(board: &mut [[u8; 19]; 19], y: usize, x: usize) -> u32 {
-    let mut count = 0;
+pub fn apply_captures(board: &mut [[u8; 19]; 19], y: usize, x: usize) -> Vec<(usize, usize)> {
+    let mut captured_stones = Vec::new();
     let player = board[y][x];
+    
+    if player == 0 {
+        return captured_stones;
+    }
+    
     let opponent = if player == 1 { 2 } else { 1 };
     let directions = [
-            (0, 1), (0, -1), (1, 0), (-1, 0),
-            (1, 1), (1, -1), (-1, 1), (-1, -1)
+        (0, 1), (0, -1), (1, 0), (-1, 0),
+        (1, 1), (1, -1), (-1, 1), (-1, -1)
     ];
+
     for (dy, dx) in directions.iter() {
         let y1 = y as i32 + dy;
         let x1 = x as i32 + dx;
@@ -22,11 +28,12 @@ pub fn apply_captures(board: &mut [[u8; 19]; 19], y: usize, x: usize) -> u32 {
             if s1 == opponent && s2 == opponent && s3 == player {
                 board[y1 as usize][x1 as usize] = 0;
                 board[y2 as usize][x2 as usize] = 0;
-                count += 2;
+                captured_stones.push((x1 as usize, y1 as usize));
+                captured_stones.push((x2 as usize, y2 as usize));
             }
         }
     }
-    count
+    captured_stones
 }
 
 pub fn is_in_board(y: i32, x: i32) -> bool {
