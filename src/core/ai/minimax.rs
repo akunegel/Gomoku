@@ -5,7 +5,8 @@ use std::time::{Instant, Duration};
 
 pub fn find_best_move(state: &GameState, zobrist: &Zobrist) -> Option<(usize, usize)> {
     let start_time = Instant::now();
-    let time_limit = Duration::from_millis(480); 
+    // let time_limit = Duration::from_millis(500); 
+    let time_limit = Duration::from_millis(10000000); 
     let mut tt = TranspositionTable::new(256);
     let mut best_move = None;
 
@@ -13,21 +14,31 @@ pub fn find_best_move(state: &GameState, zobrist: &Zobrist) -> Option<(usize, us
         return Some((9, 9));
     } 
 
-    for depth in 1..=10 {
-        if start_time.elapsed() >= time_limit { break; }
+    // for depth in 1..=10 {
+    //     if start_time.elapsed() >= time_limit { break; }
  
-        if let Some((m, score)) = search_at_depth(state, depth, zobrist, &mut tt, &start_time, time_limit) {
-            if start_time.elapsed() >= time_limit {
-                break;
-            }
+    //     if let Some((m, score)) = search_at_depth(state, depth, zobrist, &mut tt, &start_time, time_limit) {
+    //         if start_time.elapsed() >= time_limit {
+    //             break;
+    //         }
             
+    //         best_move = Some(m);
+    //         println!("Depth {}: Best Move: {:?} Score: {}", depth, m, score);
+            
+    //         if score.abs() > 80_000_000 { break; }
+    //     }
+    // }
+
+    let depth = 10;
+    if let Some((m, score)) = search_at_depth(state, depth, zobrist, &mut tt, &start_time, time_limit) {
+        if start_time.elapsed() < time_limit {
             best_move = Some(m);
             println!("Depth {}: Best Move: {:?} Score: {}", depth, m, score);
-            
-            if score.abs() > 80_000_000 { break; }
+        } else {
+            println!("Depth 10 search timed out. Falling back to default move.");
         }
     }
-    
+
     best_move.or_else(|| get_candidates(state).first().cloned())
 }
 
@@ -42,7 +53,7 @@ fn search_at_depth(state: &GameState, depth: u32, zobrist: &Zobrist, tt: &mut Tr
     let mut best_move_at_depth = None;
     let mut best_score = if is_maximizing { -200_000_000 } else { 200_000_000 };
 
-    let max_branches = 15;
+    let max_branches = 8;
 
     for (x, y) in candidates.into_iter().take(max_branches) {
         if start_time.elapsed() >= time_limit { break; }
@@ -109,9 +120,9 @@ fn alpha_beta(state: &GameState, depth: u32, mut alpha: i32, mut beta: i32, is_m
         }
     }
 
-    let max_branches = if depth >= 6 { 12 } 
-                       else if depth >= 3 { 8 } 
-                       else { 5 };
+    let max_branches = if depth >= 6 { 8 } 
+                       else if depth >= 3 { 6 } 
+                       else { 4 };
 
     for (x, y) in candidates.into_iter().take(max_branches) {
         if state.can_place_piece(x, y).is_ok() {
