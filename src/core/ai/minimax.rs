@@ -191,8 +191,8 @@ fn evaluate_board(state: &GameState) -> i32 {
     if p2_caps >= 5 { return -90_000_000; }
 
     let mut score = 0;
-    let mut offensive_capture = 150_000;
-    let mut defensive_capture = 150_000;
+    let mut offensive_capture = 400_000;
+    let mut defensive_capture = 400_000;
 
     if p1_caps == 4 {
         offensive_capture = 5_000_000;
@@ -214,16 +214,16 @@ fn evaluate_board(state: &GameState) -> i32 {
             if p == 0 { continue; }
 
             for &(dx, dy) in &directions {
-                if count_captures(state, x, y, dx, dy, p) > 0 {
-                    let val = 50_000;
+                if count_captures(state, x, y, dx, dy, p) > false {
+                    let val = 100_000;
                     if p == 1 {
                         score += val;
                     } else {
                         score -= val;
                     }
                 }
-                if count_captures(state, x, y, -dx, -dy, p) > 0 {
-                    let val = 50_000;
+                if count_captures(state, x, y, -dx, -dy, p) > false {
+                    let val = 100_000;
                     if p == 1 {
                         score += val;
                     } else {
@@ -238,12 +238,12 @@ fn evaluate_board(state: &GameState) -> i32 {
 
                 let (count, open) = get_line_info(state, x, y, dx, dy, p);
                 let val = match (count, open) {
-                    (5, _) => 10_000_000,
-                    (4, 2) => 1_000_000,
-                    (4, 1) => 200_000, 
-                    (3, 2) => 100_000,
+                    (5, _) => 50_000_000,
+                    (4, 2) => 5_000_000,
+                    (4, 1) => 50_000, 
+                    (3, 2) => 250_000,
                     (3, 1) => 10_000,
-                    (2, 2) => 1_000,
+                    (2, 2) => 5_000,
                     _ => 0,
                 };
                 if p == 1 { score += val; } else { score -= val; }
@@ -286,10 +286,10 @@ fn move_heuristic(state: &GameState, x: usize, y: usize) -> i32 {
         let (co, oo) = check_pattern_at(state, x, y, dx, dy, opp);
         
         score += match (cp, op) {
-            (5, _) => 100_000, (4, 2) => 50_000, (4, 1) => 10_000, (3, 2) => 5_000, _ => cp * 10,
+            (5, _) => 10_00_000, (4, 2) => 1_000_000, (4, 1) => 50_000, (3, 2) => 20_000, _ => cp * 10,
         };
         score += match (co, oo) {
-            (5, _) => 90_000,  (4, 2) => 40_000, (4, 1) => 8_000,  (3, 2) => 4_000, _ => co * 10,
+            (5, _) => 8_000_000,  (4, 2) => 900_000, (4, 1) => 40_000,  (3, 2) => 150_000, _ => co * 10,
         };
     }
     score + (10 - (9 - x as i32).abs() + 10 - (9 - y as i32).abs())
@@ -312,7 +312,7 @@ fn check_pattern_at(state: &GameState, x: usize, y: usize, dx: i32, dy: i32, p: 
     (count, open)
 }
 
-fn count_captures(state: &GameState, x: usize, y: usize, dx: i32, dy: i32, p: u8) -> i32 {
+fn count_captures(state: &GameState, x: usize, y: usize, dx: i32, dy: i32, p: u8) -> bool {
     let opp = if p == 1 { 2 } else { 1 };
 
     let nx1 = x as i32 + dx;
@@ -325,9 +325,9 @@ fn count_captures(state: &GameState, x: usize, y: usize, dx: i32, dy: i32, p: u8
     if nx3 >= 0 && nx3 < 19 && ny3 >= 0 && ny3 < 19 {
         if state.board[ny1 as usize][nx1 as usize] == opp &&
               state.board[ny2 as usize][nx2 as usize] == opp &&
-              state.board[ny3 as usize][nx3 as usize] == 0 {
-                return 1;
+              state.board[ny3 as usize][nx3 as usize] == p {
+                return true;
           }
     }
-    0
+    false
 }
