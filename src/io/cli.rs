@@ -1,5 +1,5 @@
-use crate::core::GameState;
 use super::interface::Interface;
+use crate::core::GameState;
 
 pub struct CliInterface;
 
@@ -18,11 +18,18 @@ impl Interface for CliInterface {
         }
     }
 
-    fn get_move(&self, state: &GameState) -> Option<(usize, usize)> {
-        println!("Enter your move (x y): ");
+    fn get_move(&self, state: &mut GameState) -> Option<(usize, usize)> {
+        println!("Enter your move (x y) or z to undo: ");
         let mut input = String::new();
-        std::io::stdin().read_line(&mut input).expect("Failed to read line");
-        let parts: Vec<&str> = input.trim().split_whitespace().collect();
+        std::io::stdin()
+            .read_line(&mut input)
+            .expect("Failed to read line");
+        let input = input.trim();
+        if input == "z" {
+            state.undo();
+            return None;
+        }
+        let parts: Vec<&str> = input.split_whitespace().collect();
         if parts.len() != 2 {
             return None;
         }

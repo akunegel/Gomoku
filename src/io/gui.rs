@@ -1,5 +1,5 @@
-use crate::core::GameState;
 use super::interface::Interface;
+use crate::core::GameState;
 
 pub struct GuiInterface;
 
@@ -8,7 +8,7 @@ impl Interface for GuiInterface {
         // GUI rendering will be implemented here
     }
 
-    fn get_move(&self, _state: &GameState) -> Option<(usize, usize)> {
+    fn get_move(&self, _state: &mut GameState) -> Option<(usize, usize)> {
         // Get move from GUI input
         None
     }
