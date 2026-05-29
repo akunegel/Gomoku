@@ -1,6 +1,11 @@
 use crate::core::GameState;
+use std::pin::Pin;
+use std::future::Future;
 
 pub trait Interface {
-    fn render(&self, state: &GameState);
-    fn get_move(&self, state: &mut GameState) -> Option<(usize, usize)>;
+    fn render(&mut self, state: &GameState);
+    fn get_move(&mut self, state: &GameState) -> Option<(usize, usize)>;
+    fn wait(&mut self) -> Pin<Box<dyn Future<Output = ()> + '_>>;
+    fn is_key_pressed(&self, key: char) -> bool;
 }
+
