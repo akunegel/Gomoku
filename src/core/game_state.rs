@@ -4,6 +4,7 @@ use crate::core::zobrist::Zobrist;
 pub enum GameMode {
     PVP,
     PVA,
+    AVA,
 }
 
 #[derive(Clone)]

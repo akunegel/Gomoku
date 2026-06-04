@@ -34,6 +34,12 @@ impl Interface for CliInterface {
         if state.last_ai_time > 0.0 {
             println!("AI Time: {:.4}s", state.last_ai_time);
         }
+        if let Some(winner) = state.winner {
+            println!("\n====================================");
+            println!("      GAME OVER! Winner: {}", if winner == 1 { "BLACK (X)" } else { "WHITE (O)" });
+            println!("====================================\n");
+            std::process::exit(0);
+        }
         println!("----------------\n");
     }
 

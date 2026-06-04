@@ -5,33 +5,51 @@ use std::time::{Instant, Duration};
 
 pub fn find_best_move(state: &GameState, zobrist: &Zobrist) -> Option<(usize, usize)> {
     let start_time = Instant::now();
-    // let time_limit = Duration::from_millis(500); 
-    let time_limit = Duration::from_millis(450); 
+    let time_limit = Duration::from_millis(499); 
     let mut tt = TranspositionTable::new(256);
-    let mut best_move = None;
+    // let mut best_move = None;
 
     if state.board.iter().flatten().all(|&cell| cell == 0) {
         return Some((9, 9));
     } 
 
-    for depth in 1..=10 {
-        let alpha = -200_000_000;
-        let beta = 200_000_000;
-        // println!("Depth {}: Starting search...", depth);
-        // その深さでの探索を実行
-        if let Some((m, score)) = search_at_depth(state, depth, alpha, beta, zobrist, &mut tt, &start_time, time_limit) {
-            best_move = Some(m);
-            // 評価値が極端に高い場合は必勝と判断して探索を切り上げ
-            if score.abs() > 90_000_000 { break; }
-        } else {
-            // 時間切れの場合は、前回の深さのベストムーブを返して終了
-            break;
-        }
+    // for depth in 1..=10 {
+    //     let alpha = -200_000_000;
+    //     let beta = 200_000_000;
+    //     // println!("Depth {}: Starting search...", depth);
+    //     if let Some((m, score)) = search_at_depth(state, depth, alpha, beta, zobrist, &mut tt, &start_time, time_limit) {
+    //         best_move = Some(m);
+    //         if score.abs() > 90_000_000 { break; }
+    //     } else {
+    //         break;
+    //     }
         
-        if start_time.elapsed() >= time_limit { break; }
-    }
+    //     if start_time.elapsed() >= time_limit { break; }
+    // }
+    let depth = 10;
+    let alpha = -200_000_000;
+    let beta = 200_000_000;
+    
+    let result = search_at_depth(state, depth, alpha, beta, zobrist, &mut tt, &start_time, time_limit);
 
-    best_move.or_else(|| get_candidates(state).first().cloned())
+    // best_move.or_else(|| {
+    //     for y in 0..19 {
+    //         for x in 0..19 {
+    //             if state.board[y][x] == 0 { return Some((x, y)); }
+    //         }
+    //     }
+    //     None
+    // })
+    result.map(|(m, _)| m).or_else(|| {
+        for y in 0..19 {
+            for x in 0..19 {
+                if state.board[y][x] == 0 && state.can_place_piece(x, y).is_ok() {
+                    return Some((x, y));
+                }
+            }
+        }
+        None
+    })
 }
 
 fn search_at_depth(state: &GameState, depth: u32, mut alpha: i32, mut beta: i32, 
@@ -113,7 +131,7 @@ fn alpha_beta(state: &GameState, depth: u32, mut alpha: i32, mut beta: i32, is_m
         }
     }
 
-    let max_branches = if depth >= 6 { 8 } 
+    let max_branches = if depth >= 6 { 4 } 
                        else if depth >= 3 { 6 } 
                        else { 4 };
 
@@ -164,15 +182,25 @@ fn get_candidates(state: &GameState) -> Vec<(usize, usize)> {
                         let uy = (y as i32 + dy) as usize;
                         let ux = (x as i32 + dx) as usize;
                         if state.board[uy][ux] == 0 && !visited[uy][ux] {
-                            visited[uy][ux] = true;
-                            candidates.push((ux, uy));
+                            if state.can_place_piece(ux, uy).is_ok() {
+                                visited[uy][ux] = true;
+                                candidates.push((ux, uy));
+                            }
                         }
                     }
                 }
             }
         }
     }
-    if candidates.is_empty() { candidates.push((9, 9)); }
+    if candidates.is_empty() { 
+        for y in 0..19 {
+            for x in 0..19 {
+                if state.board[y][x] == 0 && state.can_place_piece(x, y).is_ok() {
+                    candidates.push((x, y));
+                }
+            }
+        }
+    }
     candidates
 }
 

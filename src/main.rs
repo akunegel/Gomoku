@@ -15,7 +15,7 @@ async fn main() {
         println!("Do you want to play CLI gomoku (1) or GUI gomoku (2)?");
         let mut choice = String::new();
         stdio::stdin().read_line(&mut choice).expect("Failed to read line");
-        
+
         match choice.trim() {
             "1" => break Box::new(CliInterface),
             "2" => break Box::new(GuiInterface),
@@ -23,12 +23,13 @@ async fn main() {
         }
     };
     let mode = loop {
-        println!("Select Mode: (1) Human vs Human [PVP], (2) Human vs AI [PVA]");
+        println!("Select Mode: (1) Human vs Human [PVP], (2) Human vs AI [PVA], (3) AI vs AI [AVA]");
         let mut choice = String::new();
         stdio::stdin().read_line(&mut choice).expect("Failed");
         match choice.trim() {
             "1" => break core::game_state::GameMode::PVP,
             "2" => break core::game_state::GameMode::PVA,
+            "3" => break core::game_state::GameMode::AVA,
             _ => println!("Invalid choice."),
         }
     };
@@ -43,7 +44,6 @@ async fn game_loop(state: &mut GameState, interface: &mut dyn Interface, zobrist
 
         if state.winner.is_none() {
             if interface.is_key_pressed('H') {
-                println!("Hint requested. AI is thinking...");
                 state.hint_move = core::ai::minimax::find_best_move(state, zobrist);
             }
             let current_p = state.current_player();
@@ -56,13 +56,11 @@ async fn game_loop(state: &mut GameState, interface: &mut dyn Interface, zobrist
                     if current_p == 1 {
                         interface.get_move(state)
                     } else {
-                        println!("AI is thinking...");
-                        let start_time = std::time::Instant::now();
-                        let res = core::ai::minimax::find_best_move(state, zobrist);
-                        let duration = start_time.elapsed();
-                        state.last_ai_time = duration.as_secs_f64();
-                        res
+                        run_ai_move(state, zobrist)
                     }
+                }
+                core::game_state::GameMode::AVA => {
+                    run_ai_move(state, zobrist)
                 }
             };
 
@@ -73,14 +71,31 @@ async fn game_loop(state: &mut GameState, interface: &mut dyn Interface, zobrist
                         state.hint_move = None;
 
                         if let Some(w) = state.winner {
+                            interface.render(state);
                             println!("Game Over! Player {} won!", w);
                         }
                     },
-                    Err(e) => println!("Invalid move: {}", e),
+                    Err(e) => {
+                        println!("AI attempted an invalid move: {}", e);
+            
+                        if state.mode == core::game_state::GameMode::AVA {
+                            let winner = if state.current_player() == 1 { 2 } else { 1 };
+                            state.winner = Some(winner);
+                            println!("Game Over! Player {} won by default (Opponent played forbidden move)", winner);
+                        }
+                    },
                 }
             }
         }
-
         interface.wait().await;
     }
+}
+
+
+fn run_ai_move(state: &mut GameState, zobrist: &Zobrist) -> Option<(usize, usize)> {
+    let start_time = std::time::Instant::now();
+    let res = core::ai::minimax::find_best_move(state, zobrist);
+    let duration = start_time.elapsed();
+    state.last_ai_time = duration.as_secs_f64();
+    res
 }
