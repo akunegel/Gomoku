@@ -6,7 +6,7 @@ use std::time::{Instant, Duration};
 pub fn find_best_move(state: &GameState, zobrist: &Zobrist) -> Option<(usize, usize)> {
     let start_time = Instant::now();
     // let time_limit = Duration::from_millis(500); 
-    let time_limit = Duration::from_millis(10000000); 
+    let time_limit = Duration::from_millis(450); 
     let mut tt = TranspositionTable::new(256);
     let mut best_move = None;
 
@@ -14,71 +14,64 @@ pub fn find_best_move(state: &GameState, zobrist: &Zobrist) -> Option<(usize, us
         return Some((9, 9));
     } 
 
-    // for depth in 1..=10 {
-    //     if start_time.elapsed() >= time_limit { break; }
- 
-    //     if let Some((m, score)) = search_at_depth(state, depth, zobrist, &mut tt, &start_time, time_limit) {
-    //         if start_time.elapsed() >= time_limit {
-    //             break;
-    //         }
-            
-    //         best_move = Some(m);
-    //         println!("Depth {}: Best Move: {:?} Score: {}", depth, m, score);
-            
-    //         if score.abs() > 80_000_000 { break; }
-    //     }
-    // }
-
-    let depth = 10;
-    if let Some((m, score)) = search_at_depth(state, depth, zobrist, &mut tt, &start_time, time_limit) {
-        if start_time.elapsed() < time_limit {
+    for depth in 1..=10 {
+        let alpha = -200_000_000;
+        let beta = 200_000_000;
+        // println!("Depth {}: Starting search...", depth);
+        // その深さでの探索を実行
+        if let Some((m, score)) = search_at_depth(state, depth, alpha, beta, zobrist, &mut tt, &start_time, time_limit) {
             best_move = Some(m);
-            println!("Depth {}: Best Move: {:?} Score: {}", depth, m, score);
+            // 評価値が極端に高い場合は必勝と判断して探索を切り上げ
+            if score.abs() > 90_000_000 { break; }
         } else {
-            println!("Depth 10 search timed out. Falling back to default move.");
+            // 時間切れの場合は、前回の深さのベストムーブを返して終了
+            break;
         }
+        
+        if start_time.elapsed() >= time_limit { break; }
     }
 
     best_move.or_else(|| get_candidates(state).first().cloned())
 }
 
-fn search_at_depth(state: &GameState, depth: u32, zobrist: &Zobrist, tt: &mut TranspositionTable, start_time: &Instant, time_limit: Duration) -> Option<((usize, usize), i32)> {
-    let mut alpha = -200_000_000;
-    let mut beta = 200_000_000;
+fn search_at_depth(state: &GameState, depth: u32, mut alpha: i32, mut beta: i32, 
+                    zobrist: &Zobrist, tt: &mut TranspositionTable, 
+                    start_time: &Instant, time_limit: Duration) -> Option<((usize, usize), i32)> {
+    
     let is_maximizing = state.current_player() == 1;
-
     let mut candidates = get_candidates(state);
+    
+    // ヒューリスティックでソート（これが枝刈りの質を左右する）
     candidates.sort_by_cached_key(|&(x, y)| -move_heuristic(state, x, y));
 
-    let mut best_move_at_depth = None;
+    let mut best_move = None;
     let mut best_score = if is_maximizing { -200_000_000 } else { 200_000_000 };
 
-    let max_branches = 8;
+    // 深さに応じた動的な枝刈り数
+    let max_branches = match depth {
+        1..=3 => 12,
+        4..=6 => 8,
+        _     => 5,
+    };
 
     for (x, y) in candidates.into_iter().take(max_branches) {
-        if start_time.elapsed() >= time_limit { break; }
-        if state.can_place_piece(x, y).is_ok() {
-            let mut next_state = state.clone();
-            next_state.place_piece(x, y, zobrist);
-            let score = alpha_beta(&next_state, depth - 1, alpha, beta, !is_maximizing, zobrist, tt, start_time, time_limit);
-
-            if is_maximizing {
-                if score > best_score {
-                    best_score = score;
-                    best_move_at_depth = Some((x, y));
-                }
-                alpha = alpha.max(score);
-            } else {
-                if score < best_score {
-                    best_score = score;
-                    best_move_at_depth = Some((x, y));
-                }
-                beta = beta.min(score);
-            }
-            if alpha >= beta { break; }
+        if start_time.elapsed() >= time_limit { return None; }
+        
+        let mut next_state = state.clone();
+        next_state.place_piece(x, y, zobrist);
+        
+        let score = alpha_beta(&next_state, depth - 1, alpha, beta, !is_maximizing, zobrist, tt, start_time, time_limit);
+        
+        if is_maximizing {
+            if score > best_score { best_score = score; best_move = Some((x, y)); }
+            alpha = alpha.max(score);
+        } else {
+            if score < best_score { best_score = score; best_move = Some((x, y)); }
+            beta = beta.min(score);
         }
+        if alpha >= beta { break; }
     }
-    best_move_at_depth.map(|m| (m, best_score))
+    best_move.map(|m| (m, best_score))
 }
 
 fn alpha_beta(state: &GameState, depth: u32, mut alpha: i32, mut beta: i32, is_maximizing: bool, zobrist: &Zobrist, tt: &mut TranspositionTable, start_time: &Instant, time_limit: Duration) -> i32 {
