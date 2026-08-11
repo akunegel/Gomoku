@@ -1,5 +1,5 @@
 use crate::core::GameState;
-use super::interface::Interface;
+use super::interface::{Interface, PlayerAction};
 use std::pin::Pin;
 use std::future::Future;
 pub struct CliInterface;
@@ -34,26 +34,41 @@ impl Interface for CliInterface {
         if state.last_ai_time > 0.0 {
             println!("AI Time: {:.4}s", state.last_ai_time);
         }
+        println!("\n--- Moves ---");
+        for m in state.move_history() {
+            let player = if m.player == 1 { "B" } else { "W" };
+            if m.captures > 0 {
+                println!("{}. {} ({}, {}) +{}", m.number, player, m.x, m.y, m.captures);
+            } else {
+                println!("{}. {} ({}, {})", m.number, player, m.x, m.y);
+            }
+        }
         if let Some(winner) = state.winner {
             println!("\n====================================");
             println!("      GAME OVER! Winner: {}", if winner == 1 { "BLACK (X)" } else { "WHITE (O)" });
-            println!("====================================\n");
-            std::process::exit(0);
+            println!("====================================");
         }
         println!("----------------\n");
     }
 
-    fn get_move(&mut self, _state: &GameState) -> Option<(usize, usize)> {
-        println!("Enter your move (x y): ");
+    fn get_action(&mut self, _state: &GameState) -> Option<PlayerAction> {
+        println!("Enter your move (x y), z to undo, s to save, q to quit: ");
         let mut input = String::new();
         std::io::stdin().read_line(&mut input).expect("Failed to read line");
-        let parts: Vec<&str> = input.trim().split_whitespace().collect();
+        let input = input.trim();
+        match input {
+            "z" | "undo" => return Some(PlayerAction::Undo),
+            "s" | "save" => return Some(PlayerAction::Save),
+            "q" | "quit" => return Some(PlayerAction::Quit),
+            _ => {}
+        }
+        let parts: Vec<&str> = input.split_whitespace().collect();
         if parts.len() != 2 {
             return None;
         }
         let x = parts[0].parse::<usize>().ok()?;
         let y = parts[1].parse::<usize>().ok()?;
-        Some((x, y))
+        Some(PlayerAction::Place((x, y)))
     }
 
     fn is_key_pressed(&self, _key: char) -> bool {
@@ -61,5 +76,15 @@ impl Interface for CliInterface {
     }
     fn wait(&mut self) -> Pin<Box<dyn Future<Output = ()> + '_>> {
         Box::pin(async {})
+    }
+
+    fn get_save_path(&mut self) -> Pin<Box<dyn Future<Output = Option<String>> + '_>> {
+        Box::pin(async {
+            println!("Save path: ");
+            let mut path = String::new();
+            std::io::stdin().read_line(&mut path).expect("Failed to read line");
+            let path = path.trim().to_string();
+            if path.is_empty() { None } else { Some(path) }
+        })
     }
 }

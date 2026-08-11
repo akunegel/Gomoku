@@ -4,7 +4,7 @@ mod io;
 
 use std::io as stdio;
 use core::GameState;
-use io::{Interface, CliInterface, GuiInterface};
+use io::{Interface, CliInterface, GuiInterface, PlayerAction};
 
 use crate::core::zobrist::Zobrist;
 
@@ -22,7 +22,26 @@ async fn main() {
             _ => println!("Invalid choice. Please enter 1 or 2.\n"),
         }
     };
-    let mode = loop {
+    let mut state = loop {
+        println!("Enter a save file path to load, or press Enter to start a new game:");
+        let mut choice = String::new();
+        stdio::stdin().read_line(&mut choice).expect("Failed to read line");
+        let choice = choice.trim();
+        if choice.is_empty() {
+            break GameState::new(choose_mode());
+        }
+        match GameState::load_from_file(choice) {
+            Ok(loaded) => break loaded,
+            Err(e) => println!("Could not load {}: {}", choice, e),
+        }
+    };
+    let zobrist = Zobrist::new();
+    state.recompute_hash(&zobrist);
+    game_loop(&mut state, interface.as_mut(), &zobrist).await;
+}
+
+fn choose_mode() -> core::game_state::GameMode {
+    loop {
         println!("Select Mode: (1) Human vs Human [PVP], (2) Human vs AI [PVA], (3) AI vs AI [AVA]");
         let mut choice = String::new();
         stdio::stdin().read_line(&mut choice).expect("Failed");
@@ -32,41 +51,51 @@ async fn main() {
             "3" => break core::game_state::GameMode::AVA,
             _ => println!("Invalid choice."),
         }
-    };
-    let mut state = GameState::new(mode);
-    let zobrist = Zobrist::new();
-    game_loop(&mut state, interface.as_mut(), &zobrist).await;
+    }
 }
 
 async fn game_loop(state: &mut GameState, interface: &mut dyn Interface, zobrist: &Zobrist) {
     loop {
         interface.render(state);
 
+        if interface.is_key_pressed('Z') {
+            state.undo_last_move();
+        }
+        if interface.is_key_pressed('S') {
+            save_and_exit(state, interface).await;
+        }
+
         if state.winner.is_none() {
             if interface.is_key_pressed('H') {
                 state.hint_move = core::ai::minimax::find_best_move(state, zobrist);
             }
-            let current_p = state.current_player();
+        }
 
-            let maybe_move = match state.mode {
+        let maybe_action = if state.winner.is_none() {
+            match state.mode {
                 core::game_state::GameMode::PVP => {
-                    interface.get_move(state)
+                    interface.get_action(state)
                 }
                 core::game_state::GameMode::PVA => {
-                    if current_p == 1 {
-                        interface.get_move(state)
+                    if state.current_player() == 1 {
+                        interface.get_action(state)
                     } else {
-                        run_ai_move(state, zobrist)
+                        run_ai_action(state, zobrist)
                     }
                 }
                 core::game_state::GameMode::AVA => {
-                    run_ai_move(state, zobrist)
+                    run_ai_action(state, zobrist)
                 }
-            };
+            }
+        } else {
+            interface.get_action(state)
+        };
 
-            if let Some((x, y)) = maybe_move {
+        match maybe_action {
+            Some(PlayerAction::Place((x, y))) if state.winner.is_none() => {
                 match state.can_place_piece(x, y) {
                     Ok(()) => {
+                        state.push_history();
                         state.place_piece(x, y, zobrist);
                         state.hint_move = None;
 
@@ -86,16 +115,36 @@ async fn game_loop(state: &mut GameState, interface: &mut dyn Interface, zobrist
                     },
                 }
             }
+            Some(PlayerAction::Undo) => {
+                if !state.undo_last_move() {
+                    println!("Nothing to undo.");
+                }
+            }
+            Some(PlayerAction::Save) => save_and_exit(state, interface).await,
+            Some(PlayerAction::Quit) => return,
+            _ => {}
         }
         interface.wait().await;
     }
 }
 
+async fn save_and_exit(state: &GameState, interface: &mut dyn Interface) {
+    if let Some(path) = interface.get_save_path().await {
+        match state.save_to_file(&path) {
+            Ok(()) => {
+                println!("Game saved to {}", path);
+                std::process::exit(0);
+            }
+            Err(e) => println!("Failed to save {}: {}", path, e),
+        }
+    }
+}
 
-fn run_ai_move(state: &mut GameState, zobrist: &Zobrist) -> Option<(usize, usize)> {
+
+fn run_ai_action(state: &mut GameState, zobrist: &Zobrist) -> Option<PlayerAction> {
     let start_time = std::time::Instant::now();
     let res = core::ai::minimax::find_best_move(state, zobrist);
     let duration = start_time.elapsed();
     state.last_ai_time = duration.as_secs_f64();
-    res
+    res.map(PlayerAction::Place)
 }

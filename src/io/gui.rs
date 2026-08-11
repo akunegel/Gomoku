@@ -1,5 +1,5 @@
 use crate::core::game_state::GameState;
-use super::interface::Interface;
+use super::interface::{Interface, PlayerAction};
 use macroquad::prelude::*;
 use std::pin::Pin;
 use std::future::Future;
@@ -66,9 +66,19 @@ impl Interface for GuiInterface {
         draw_text(&format!("White: {}", state.captures[1]), 620.0, 160.0, 25.0, WHITE);
         let timer_text = format!("AI Time: {:.4}s", state.last_ai_time);
         draw_text(&timer_text, 20.0, 40.0, 30.0, BLACK);
+
+        draw_text("Moves:", 620.0, 210.0, 25.0, DARKGRAY);
+        const MAX_ROWS: usize = 18;
+        for (i, m) in state.move_history().iter().enumerate() {
+            let player = if m.player == 1 { "B" } else { "W" };
+            let text = format!("{}. {}({},{})", m.number, player, m.x, m.y);
+            let column = (i / MAX_ROWS) as f32;
+            let row = (i % MAX_ROWS) as f32;
+            draw_text(&text, 620.0 + column * 95.0, 240.0 + row * 18.0, 16.0, DARKGRAY);
+        }
     }
 
-    fn get_move(&mut self, state: &GameState) -> Option<(usize, usize)> {
+    fn get_action(&mut self, state: &GameState) -> Option<PlayerAction> {
         if is_key_pressed(KeyCode::Escape) {
             std::process::exit(0);
         }
@@ -78,7 +88,7 @@ impl Interface for GuiInterface {
             let y = ((my - 40.0 + 15.0) / 30.0).floor() as i32;
 
             if x >= 0 && x < 19 && y >= 0 && y < 19 && state.board[y as usize][x as usize] == 0 {
-                return Some((x as usize, y as usize));
+                return Some(PlayerAction::Place((x as usize, y as usize)));
             }
         }
         None
@@ -93,7 +103,36 @@ impl Interface for GuiInterface {
     fn is_key_pressed(&self, key: char) -> bool {
         match key {
             'H' => macroquad::prelude::is_key_pressed(KeyCode::H),
+            'Z' => macroquad::prelude::is_key_pressed(KeyCode::Z),
+            'S' => macroquad::prelude::is_key_pressed(KeyCode::S),
             _ => false,
         }
+    }
+
+    fn get_save_path(&mut self) -> Pin<Box<dyn Future<Output = Option<String>> + '_>> {
+        Box::pin(async {
+            clear_input_queue();
+            let mut path = String::new();
+            loop {
+                clear_background(BEIGE);
+                draw_rectangle(0.0, 0.0, screen_width(), screen_height(), Color::new(0.0, 0.0, 0.0, 0.6));
+                draw_text("Enter save path:", 200.0, 250.0, 30.0, WHITE);
+                draw_rectangle(200.0, 280.0, 400.0, 40.0, WHITE);
+                draw_text(&path, 210.0, 310.0, 30.0, BLACK);
+                if is_key_pressed(KeyCode::Escape) {
+                    return None;
+                }
+                if is_key_pressed(KeyCode::Enter) && !path.is_empty() {
+                    return Some(path);
+                }
+                if is_key_pressed(KeyCode::Backspace) {
+                    path.pop();
+                }
+                while let Some(c) = get_char_pressed() {
+                    path.push(c);
+                }
+                next_frame().await;
+            }
+        })
     }
 }
