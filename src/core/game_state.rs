@@ -211,6 +211,7 @@ impl GameState {
         let p_current = self.current_player();
         let opponent = if p_current == 1 { 2 } else { 1 };
 
+        self.hash ^= zobrist.get_turn_hash(p_current);
         self.board[y][x] = p_current;
         self.update_hash(x, y, p_current, zobrist);
         let captured_coords = capture::apply_captures(&mut self.board, y, x);
@@ -243,6 +244,8 @@ impl GameState {
         }
 
         self.turn_count += 1;
+        let next_player = self.current_player();
+        self.hash ^= zobrist.get_turn_hash(next_player);
     } 
 
 
