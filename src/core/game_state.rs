@@ -1,5 +1,6 @@
 use super::rules::{capture, double_three};
 use crate::core::zobrist::Zobrist;
+use crate::core::ai::{SearchReport, SharedProgress};
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub enum GameMode {
     PVP,
@@ -36,6 +37,8 @@ pub struct GameState {
     pub five_aligned_winner: Option<u8>,
     pub mode: GameMode,
     pub hint_move: Option<(usize, usize)>,
+    pub last_search: Option<SearchReport>,
+    pub search_progress: Option<SharedProgress>,
     pub history: Vec<GameStateSnapshot>,
     pub undos_since_last_move: u32,
 }
@@ -52,6 +55,8 @@ impl Clone for GameState {
             five_aligned_winner: self.five_aligned_winner,
             mode: self.mode,
             hint_move: self.hint_move,
+            last_search: self.last_search.clone(),
+            search_progress: None,
             history: Vec::new(),
             undos_since_last_move: 0,
         }
@@ -72,6 +77,8 @@ impl GameState {
             five_aligned_winner: None,
             mode,
             hint_move: None,
+            last_search: None,
+            search_progress: None,
             history: Vec::new(),
             undos_since_last_move: 0,
         }
@@ -101,6 +108,8 @@ impl GameState {
             self.winner = prev.winner;
             self.five_aligned_winner = prev.five_aligned_winner;
             self.hint_move = None;
+            self.last_search = None;
+            self.search_progress = None;
             self.undos_since_last_move += 1;
             true
         } else {

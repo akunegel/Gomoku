@@ -1,5 +1,6 @@
 use rand::Rng;
 
+#[derive(Clone)]
 pub struct Zobrist {
     pub table: [[u64; 2]; 19 * 19],
     pub turn_hash: [u64; 2],

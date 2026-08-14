@@ -7,9 +7,19 @@ use core::GameState;
 use io::{Interface, CliInterface, GuiInterface, PlayerAction};
 
 use crate::core::zobrist::Zobrist;
+use crate::core::ai::{SearchProgress, SharedProgress};
+use std::sync::{Arc, Mutex};
 
+fn window_conf() -> macroquad::prelude::Conf {
+    macroquad::prelude::Conf {
+        window_title: "Gomoku".to_owned(),
+        window_width: 1280,
+        window_height: 700,
+        ..Default::default()
+    }
+}
 
-#[macroquad::main("Gomoku")]
+#[macroquad::main(window_conf)]
 async fn main() {
     let mut interface: Box<dyn Interface> = loop {
         println!("Do you want to play CLI gomoku (1) or GUI gomoku (2)?");
@@ -18,7 +28,7 @@ async fn main() {
 
         match choice.trim() {
             "1" => break Box::new(CliInterface),
-            "2" => break Box::new(GuiInterface),
+            "2" => break Box::new(GuiInterface::new(ask_visualizer())),
             _ => println!("Invalid choice. Please enter 1 or 2.\n"),
         }
     };
@@ -38,6 +48,19 @@ async fn main() {
     let zobrist = Zobrist::new();
     state.recompute_hash(&zobrist);
     game_loop(&mut state, interface.as_mut(), &zobrist).await;
+}
+
+fn ask_visualizer() -> bool {
+    loop {
+        println!("Enable the solver visualizer? (y/n)");
+        let mut choice = String::new();
+        stdio::stdin().read_line(&mut choice).expect("Failed to read line");
+        match choice.trim().to_lowercase().as_str() {
+            "y" | "yes" => return true,
+            "n" | "no" => return false,
+            _ => println!("Invalid choice. Please enter y or n.\n"),
+        }
+    }
 }
 
 fn choose_mode() -> core::game_state::GameMode {
@@ -67,7 +90,7 @@ async fn game_loop(state: &mut GameState, interface: &mut dyn Interface, zobrist
 
         if state.winner.is_none() {
             if interface.is_key_pressed('H') {
-                state.hint_move = core::ai::minimax::find_best_move(state, zobrist);
+                state.hint_move = run_search_live(state, interface, zobrist).await;
             }
         }
 
@@ -80,11 +103,11 @@ async fn game_loop(state: &mut GameState, interface: &mut dyn Interface, zobrist
                     if state.current_player() == 1 {
                         interface.get_action(state)
                     } else {
-                        run_ai_action(state, zobrist)
+                        run_ai_action(state, interface, zobrist).await
                     }
                 }
                 core::game_state::GameMode::AVA => {
-                    run_ai_action(state, zobrist)
+                    run_ai_action(state, interface, zobrist).await
                 }
             }
         } else {
@@ -140,11 +163,36 @@ async fn save_and_exit(state: &GameState, interface: &mut dyn Interface) {
     }
 }
 
-
-fn run_ai_action(state: &mut GameState, zobrist: &Zobrist) -> Option<PlayerAction> {
+async fn run_ai_action(state: &mut GameState, interface: &mut dyn Interface, zobrist: &Zobrist) -> Option<PlayerAction> {
     let start_time = std::time::Instant::now();
-    let res = core::ai::minimax::find_best_move(state, zobrist);
-    let duration = start_time.elapsed();
-    state.last_ai_time = duration.as_secs_f64();
+    let res = run_search_live(state, interface, zobrist).await;
+    state.last_ai_time = start_time.elapsed().as_secs_f64();
     res.map(PlayerAction::Place)
+}
+
+async fn run_search_live(state: &mut GameState, interface: &mut dyn Interface, zobrist: &Zobrist) -> Option<(usize, usize)> {
+    if !interface.visualizer_enabled() {
+        return core::ai::minimax::find_best_move(state, zobrist);
+    }
+
+    let search_state = state.clone();
+    let search_zobrist = (*zobrist).clone();
+    let progress: SharedProgress = Arc::new(Mutex::new(SearchProgress::new(10)));
+    state.search_progress = Some(progress.clone());
+
+    let handle = std::thread::spawn(move || {
+        core::ai::minimax::search_with_progress(&search_state, &search_zobrist, &progress)
+    });
+
+    loop {
+        interface.render(state);
+        if handle.is_finished() {
+            let (mv, report) = handle.join().unwrap();
+            state.last_search = Some(report);
+            state.search_progress = None;
+            interface.render(state);
+            return mv;
+        }
+        interface.wait().await;
+    }
 }
