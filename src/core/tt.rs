@@ -34,7 +34,7 @@ impl TranspositionTable {
     pub fn save(&mut self, hash: u64, depth: u32, score: i32, node_type: NodeType, best_move: Option<(usize, usize)>) {
         let index = (hash as usize) % self.size;
         if let Some(entry) = &self.table[index] {
-            if entry.hash == hash && entry.depth > depth {
+            if entry.hash == hash && entry.depth >= depth {
                 return;
             }
         }
