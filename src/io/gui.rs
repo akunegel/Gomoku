@@ -41,12 +41,9 @@ impl Interface for GuiInterface {
         draw_board_grid();
         draw_stones(state);
 
-        if let Some(winner) = state.winner {
-            draw_winner_overlay(winner);
-        }
-
+        
         draw_text(&format!("AI Time: {:.4}s", state.last_ai_time), 20.0, 40.0, 30.0, BLACK);
-
+        
         if self.visualizer {
             draw_turn_captures(state);
             draw_board_markers(state);
@@ -56,6 +53,9 @@ impl Interface for GuiInterface {
             draw_hint(state);
             draw_turn_captures(state);
             draw_moves_list(state, 620.0, 210.0);
+        }
+        if let Some(winner) = state.winner {
+            draw_winner_overlay(winner);
         }
     }
 
@@ -146,18 +146,44 @@ fn draw_stones(state: &GameState) {
 }
 
 fn draw_winner_overlay(winner: u8) {
-    draw_rectangle(0.0, 0.0, screen_width(), screen_height(), Color::new(0.0, 0.0, 0.0, 0.6));
+    draw_rectangle(0.0, 0.0, screen_width(), screen_height(), Color::new(0.05, 0.05, 0.08, 0.9));
+
+    let panel_w = 420.0;
+    let panel_h = 200.0;
+    let panel_x = (screen_width() - panel_w) / 2.0;
+    let panel_y = (screen_height() - panel_h) / 2.0;
+
+    draw_rectangle(panel_x, panel_y, panel_w, panel_h, Color::new(0.15, 0.15, 0.2, 1.0));
+    draw_rectangle_lines(panel_x, panel_y, panel_w, panel_h, 2.0, WHITE);
 
     let text = if winner == 1 { "BLACK WINS!" } else { "WHITE WINS!" };
-    draw_text(text, screen_width() / 2.0 - 120.0, screen_height() / 2.0, 50.0, WHITE);
+    let text_color = if winner == 1 { WHITE } else { WHITE };
+    let font_size = 38.0;
+    
+    let text_dims = measure_text(text, None, font_size as u16, 1.0);
+    let text_x = panel_x + (panel_w - text_dims.width) / 2.0;
+    let text_y = panel_y + 75.0;
+    
+    draw_text(text, text_x, text_y, font_size, text_color);
 
-    let btn_rect = Rect::new(screen_width() / 2.0 - 60.0, screen_height() / 2.0 + 40.0, 120.0, 40.0);
-    draw_rectangle(btn_rect.x, btn_rect.y, btn_rect.w, btn_rect.h, RED);
-    draw_text("CLOSE GAME", btn_rect.x + 10.0, btn_rect.y + 25.0, 20.0, WHITE);
+    let btn_w = 160.0;
+    let btn_h = 40.0;
+    let btn_x = panel_x + (panel_w - btn_w) / 2.0;
+    let btn_y = panel_y + 120.0;
+    
+    draw_rectangle(btn_x, btn_y, btn_w, btn_h, Color::new(0.8, 0.2, 0.2, 1.0));
+    draw_rectangle_lines(btn_x, btn_y, btn_w, btn_h, 1.0, WHITE);
+    
+    let btn_text = "CLOSE GAME";
+    let btn_text_dims = measure_text(btn_text, None, 18, 1.0);
+    let btn_text_x = btn_x + (btn_w - btn_text_dims.width) / 2.0;
+    let btn_text_y = btn_y + 25.0;
+    
+    draw_text(btn_text, btn_text_x, btn_text_y, 18.0, WHITE);
 
     if is_mouse_button_pressed(MouseButton::Left) {
         let mouse_pos = mouse_position();
-        if btn_rect.contains(Vec2::new(mouse_pos.0, mouse_pos.1)) {
+        if Rect::new(btn_x, btn_y, btn_w, btn_h).contains(Vec2::new(mouse_pos.0, mouse_pos.1)) {
             std::process::exit(0);
         }
     }
