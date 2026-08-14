@@ -49,13 +49,15 @@ pub fn move_heuristic(state: &GameState, x: usize, y: usize) -> i32 {
         let (co, oo) = check_pattern_at(state, x, y, dx, dy, opp);
         
         score += match (cp, op) {
-            (5, _) => 10_00_000, (4, 2) => 1_000_000, (4, 1) => 500_000, (3, 2) => 200_000, _ => cp * 10,
+            (5, _) => 50_00_000, (4, 2) => 10_000_000, (4, 1) => 1_000_000, (3, 2) => 500_000, (3, 1) => 10_000, _ => cp * 10,
         };
         score += match (co, oo) {
-            (5, _) => 9_000_000,  (4, 2) => 2_000_000, (4, 1) => 1_500_000,  (3, 2) => 800_000, _ => co * 10,
+            (5, _) => 60_000_000,  (4, 2) => 20_000_000, (4, 1) => 15_000_000,  (3, 2) => 3_000_000, (3, 1) => 50_000, _ => co * 10,
         };
     }
-    score + (10 - (9 - x as i32).abs() + 10 - (9 - y as i32).abs())
+    let center_bias = (10 - (9 - x as i32).abs()) + (10 - (9 - y as i32).abs());
+    score + center_bias
+    // score + (10 - (9 - x as i32).abs() + 10 - (9 - y as i32).abs())
 }
 
 pub fn check_pattern_at(state: &GameState, x: usize, y: usize, dx: i32, dy: i32, p: u8) -> (i32, i32) {

@@ -4,18 +4,18 @@ pub fn evaluate_board(state: &GameState) -> i32 {
     let p1_caps = state.captures[0] as i32;
     let p2_caps = state.captures[1] as i32;
 
-    if p1_caps >= 5 { return 90_000_000; }
-    if p2_caps >= 5 { return -90_000_000; }
+    if p1_caps >= 10 { return 90_000_000; }
+    if p2_caps >= 10 { return -90_000_000; }
 
     let mut score = 0;
-    let mut offensive_capture = 400_000;
-    let mut defensive_capture = 400_000;
+    let mut offensive_capture = 800_000;
+    let mut defensive_capture = 800_000;
 
-    if p1_caps == 4 {
-        offensive_capture = 5_000_000;
+    if p1_caps == 8 {
+        offensive_capture = 10_000_000;
     }
-    if p2_caps == 4 {
-        defensive_capture = 5_000_000;
+    if p2_caps == 8 {
+        defensive_capture = 10_000_000;
     }
 
     offensive_capture += (state.turn_count as i32) * 2_000;
@@ -32,7 +32,7 @@ pub fn evaluate_board(state: &GameState) -> i32 {
 
             for &(dx, dy) in &directions {
                 if count_captures(state, x, y, dx, dy, p) {
-                    let val = 100_000;
+                    let val = 500_000;
                     if p == 1 {
                         score += val;
                     } else {
@@ -40,7 +40,7 @@ pub fn evaluate_board(state: &GameState) -> i32 {
                     }
                 }
                 if count_captures(state, x, y, -dx, -dy, p) {
-                    let val = 100_000;
+                    let val = 500_000;
                     if p == 1 {
                         score += val;
                     } else {
