@@ -263,7 +263,7 @@ fn alpha_beta(
         }
     }
 
-    let max_branches = if depth >= 6 { 4 } else if depth >= 3 { 6 } else { 4 };
+    let max_branches = if depth >= 6 { 4 } else if depth >= 3 { 7 } else { 4 };
 
     for (_, x, y) in candidates.into_iter().take(max_branches) {
         if state.can_place_piece(x, y).is_ok() {
