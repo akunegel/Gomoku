@@ -1,13 +1,9 @@
-extern crate macroquad;
-mod core;
-mod io;
-
 use std::io as stdio;
-use core::GameState;
-use io::{Interface, CliInterface, GuiInterface, PlayerAction};
+use gom::core::GameState;
+use gom::io::{Interface, CliInterface, GuiInterface, PlayerAction};
 
-use crate::core::zobrist::Zobrist;
-use crate::core::ai::{SearchProgress, SharedProgress};
+use gom::core::zobrist::Zobrist;
+use gom::core::ai::{SearchProgress, SharedProgress};
 use std::sync::{Arc, Mutex};
 
 fn window_conf() -> macroquad::prelude::Conf {
@@ -75,15 +71,15 @@ fn ask_visualizer() -> bool {
     }
 }
 
-fn choose_mode() -> core::game_state::GameMode {
+fn choose_mode() -> gom::core::game_state::GameMode {
     loop {
         println!("Select Mode: (1) Human vs Human [PVP], (2) Human vs AI [PVA], (3) AI vs AI [AVA]");
         let mut choice = String::new();
         stdio::stdin().read_line(&mut choice).expect("Failed");
         match choice.trim() {
-            "1" => break core::game_state::GameMode::PVP,
-            "2" => break core::game_state::GameMode::PVA,
-            "3" => break core::game_state::GameMode::AVA,
+            "1" => break gom::core::game_state::GameMode::PVP,
+            "2" => break gom::core::game_state::GameMode::PVA,
+            "3" => break gom::core::game_state::GameMode::AVA,
             _ => println!("Invalid choice."),
         }
     }
@@ -108,17 +104,17 @@ async fn game_loop(state: &mut GameState, interface: &mut dyn Interface, zobrist
 
         let maybe_action = if state.winner.is_none() {
             match state.mode {
-                core::game_state::GameMode::PVP => {
+                gom::core::game_state::GameMode::PVP => {
                     interface.get_action(state)
                 }
-                core::game_state::GameMode::PVA => {
+                gom::core::game_state::GameMode::PVA => {
                     if state.current_player() == 1 {
                         interface.get_action(state)
                     } else {
                         run_ai_action(state, interface, zobrist).await
                     }
                 }
-                core::game_state::GameMode::AVA => {
+                gom::core::game_state::GameMode::AVA => {
                     run_ai_action(state, interface, zobrist).await
                 }
             }
@@ -142,7 +138,7 @@ async fn game_loop(state: &mut GameState, interface: &mut dyn Interface, zobrist
                     Err(e) => {
                         println!("AI attempted an invalid move: {}", e);
             
-                        if state.mode == core::game_state::GameMode::AVA {
+                        if state.mode == gom::core::game_state::GameMode::AVA {
                             let winner = if state.current_player() == 1 { 2 } else { 1 };
                             state.winner = Some(winner);
                             println!("Game Over! Player {} won by default (Opponent played forbidden move)", winner);
@@ -184,7 +180,7 @@ async fn run_ai_action(state: &mut GameState, interface: &mut dyn Interface, zob
 
 async fn run_search_live(state: &mut GameState, interface: &mut dyn Interface, zobrist: &Zobrist) -> Option<(usize, usize)> {
     if !interface.visualizer_enabled() {
-        return core::ai::minimax::find_best_move(state, zobrist);
+        return gom::core::ai::minimax::find_best_move(state, zobrist);
     }
 
     let search_state = state.clone();
@@ -193,7 +189,7 @@ async fn run_search_live(state: &mut GameState, interface: &mut dyn Interface, z
     state.search_progress = Some(progress.clone());
 
     let handle = std::thread::spawn(move || {
-        core::ai::minimax::search_with_progress(&search_state, &search_zobrist, &progress)
+        gom::core::ai::minimax::search_with_progress(&search_state, &search_zobrist, &progress)
     });
 
     loop {
