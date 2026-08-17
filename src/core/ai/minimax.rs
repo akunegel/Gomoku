@@ -8,7 +8,7 @@ use super::search::{get_candidates, move_heuristic};
 use super::evaluation::evaluate_board;
 use super::report::{RootCandidate, SearchProgress, SearchReport, SearchStats, SharedProgress};
 
-const TIME_LIMIT_MS: u64 = 499;
+const TIME_LIMIT_MS: u64 = 900;
 const SEARCH_DEPTH: u32 = 10;
 const MIN_SCORE: i32 = -200_000_000;
 const MAX_SCORE: i32 = 200_000_000;
