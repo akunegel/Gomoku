@@ -121,7 +121,7 @@ fn search_at_depth(
         p.best_score_so_far = if is_maximizing { MIN_SCORE } else { MAX_SCORE };
     }
 
-    let mut best_move = None;
+    let mut best_move = candidates.first().map(|&(_, x, y)| (x, y));
     let mut best_score = if is_maximizing { MIN_SCORE } else { MAX_SCORE };
 
     let max_branches = match depth {
@@ -158,6 +158,11 @@ fn search_at_depth(
             progress,
         );
         let timed_out = start_time.elapsed() >= time_limit;
+
+        if timed_out {
+            progress.lock().unwrap().timed_out = true;
+            break;
+        }
 
         let mut cutoff = false;
         if is_maximizing {

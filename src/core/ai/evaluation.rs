@@ -12,10 +12,10 @@ pub fn evaluate_board(state: &GameState) -> i32 {
     let mut defensive_capture = 2_000_000;
 
     if p1_caps == 8 {
-        offensive_capture = 25_000_000;
+        offensive_capture = 10_000_000;
     }
     if p2_caps == 8 {
-        defensive_capture = 25_000_000;
+        defensive_capture = 10_000_000;
     }
 
     offensive_capture += (state.turn_count as i32) * 5_000;

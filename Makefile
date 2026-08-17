@@ -30,6 +30,6 @@ run:
 	@$(CARGO) run --release
 
 test:
-	@$(CARGO) test
+	@$(CARGO) test --release
 
 .PHONY: all clean fclean re run test
