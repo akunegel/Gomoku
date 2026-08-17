@@ -8,18 +8,18 @@ pub fn evaluate_board(state: &GameState) -> i32 {
     if p2_caps >= 10 { return -90_000_000; }
 
     let mut score = 0;
-    let mut offensive_capture = 800_000;
-    let mut defensive_capture = 800_000;
+    let mut offensive_capture = 2_000_000;
+    let mut defensive_capture = 2_000_000;
 
     if p1_caps == 8 {
-        offensive_capture = 10_000_000;
+        offensive_capture = 25_000_000;
     }
     if p2_caps == 8 {
-        defensive_capture = 10_000_000;
+        defensive_capture = 25_000_000;
     }
 
-    offensive_capture += (state.turn_count as i32) * 2_000;
-    defensive_capture += (state.turn_count as i32) * 2_000;
+    offensive_capture += (state.turn_count as i32) * 5_000;
+    defensive_capture += (state.turn_count as i32) * 5_000;
 
     score += p1_caps * offensive_capture;
     score -= p2_caps * defensive_capture;
@@ -32,7 +32,7 @@ pub fn evaluate_board(state: &GameState) -> i32 {
 
             for &(dx, dy) in &directions {
                 if count_captures(state, x, y, dx, dy, p) {
-                    let val = 500_000;
+                    let val = 8_000_000;
                     if p == 1 {
                         score += val;
                     } else {
@@ -40,11 +40,19 @@ pub fn evaluate_board(state: &GameState) -> i32 {
                     }
                 }
                 if count_captures(state, x, y, -dx, -dy, p) {
-                    let val = 500_000;
+                    let val = 8_000_000;
                     if p == 1 {
                         score += val;
                     } else {
                         score -= val;
+                    }
+                }
+                if is_vulnerable_to_capture(state, x, y, dx, dy, p) {
+                    let penalty = 5_000_000;
+                    if p == 1 {
+                        score -= penalty;
+                    } else {
+                        score += penalty;
                     }
                 }
                 let px = x as i32 - dx;
@@ -63,11 +71,49 @@ pub fn evaluate_board(state: &GameState) -> i32 {
                     (2, 2) => 5_000,
                     _ => 0,
                 };
-                if p == 1 { score += val; } else { score -= val; }
+                if p == 1 { score +=  val; } else { score -= val; }
             }
         }
     }
     score
+}
+
+fn is_vulnerable_to_capture(state: &GameState, x: usize, y: usize, dx: i32, dy: i32, p: u8) -> bool {
+    let opp = if p == 1 { 2 } else { 1 };
+
+    let nx1 = x as i32 + dx;
+    let ny1 = y as i32 + dy;
+
+    if nx1 < 0 || nx1 >= 19 || ny1 < 0 || ny1 >= 19 {
+        return false;
+    }
+
+    if state.board[ny1 as usize][nx1 as usize] != p {
+        return false;
+    }
+
+    let prev_x = x as i32 - dx;
+    let prev_y = y as i32 - dy;
+    let next_x = nx1 + dx;
+    let next_y = ny1 + dy;
+
+    let mut left_opp = false;
+    let mut left_empty = false;
+    if prev_x >= 0 && prev_x < 19 && prev_y >= 0 && prev_y < 19 {
+        let cell = state.board[prev_y as usize][prev_x as usize];
+        if cell == opp { left_opp = true; }
+        else if cell == 0 { left_empty = true; }
+    }
+
+    let mut right_opp = false;
+    let mut right_empty = false;
+    if next_x >= 0 && next_x < 19 && next_y >= 0 && next_y < 19 {
+        let cell = state.board[next_y as usize][next_x as usize];
+        if cell == opp { right_opp = true; }
+        else if cell == 0 { right_empty = true; }
+    }
+
+    (left_opp && right_empty) || (right_opp && left_empty)
 }
 
 fn get_line_info(state: &GameState, x: usize, y: usize, dx: i32, dy: i32, p: u8) -> (i32, i32) {

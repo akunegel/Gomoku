@@ -217,7 +217,7 @@ fn alpha_beta(
 ) -> i32 {
     if start_time.elapsed() >= time_limit {
         progress.lock().unwrap().timed_out = true;
-        return 0;
+        return -999_999_999;
     }
 
     stats.nodes += 1;
