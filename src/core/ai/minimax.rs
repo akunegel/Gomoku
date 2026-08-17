@@ -9,7 +9,7 @@ use super::evaluation::evaluate_board;
 use super::report::{RootCandidate, SearchProgress, SearchReport, SearchStats, SharedProgress};
 
 const TIME_LIMIT_MS: u64 = 900;
-const SEARCH_DEPTH: u32 = 12;
+const SEARCH_DEPTH: u32 = 10;
 const MIN_SCORE: i32 = -200_000_000;
 const MAX_SCORE: i32 = 200_000_000;
 const FLUSH_EVERY: u64 = 512;
@@ -263,7 +263,7 @@ fn alpha_beta(
         }
     }
 
-    let max_branches = if depth >= 6 { 4 } else if depth >= 3 { 7 } else { 4 };
+    let max_branches = if depth >= 6 { 4 } else if depth >= 3 { 7 } else { 5 };
 
     for (_, x, y) in candidates.into_iter().take(max_branches) {
         if state.can_place_piece(x, y).is_ok() {
