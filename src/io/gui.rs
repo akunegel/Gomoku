@@ -120,6 +120,22 @@ impl Interface for GuiInterface {
             }
         })
     }
+
+    fn wait_for_continue<'a>(&'a mut self, state: &'a GameState) -> Pin<Box<dyn Future<Output = ()> + 'a>> {
+        Box::pin(async move {
+            loop {
+                self.render(state);
+                draw_text("Press SPACE or click to continue...", PANEL_X, 670.0, 20.0, DARKGRAY);
+                next_frame().await;
+                if is_key_pressed(KeyCode::Space)
+                    || is_key_pressed(KeyCode::Enter)
+                    || is_mouse_button_pressed(MouseButton::Left)
+                {
+                    break;
+                }
+            }
+        })
+    }
 }
 
 fn draw_board_grid() {

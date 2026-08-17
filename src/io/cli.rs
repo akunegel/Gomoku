@@ -87,4 +87,12 @@ impl Interface for CliInterface {
             if path.is_empty() { None } else { Some(path) }
         })
     }
+
+    fn wait_for_continue<'a>(&'a mut self, _state: &'a GameState) -> Pin<Box<dyn Future<Output = ()> + 'a>> {
+        Box::pin(async move {
+            println!("Press Enter to continue...");
+            let mut input = String::new();
+            std::io::stdin().read_line(&mut input).expect("Failed to read line");
+        })
+    }
 }

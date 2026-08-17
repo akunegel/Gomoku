@@ -107,6 +107,7 @@ async fn game_loop(state: &mut GameState, interface: &mut dyn Interface, zobrist
                     }
                 }
                 core::game_state::GameMode::AVA => {
+                    interface.wait_for_continue(state).await;
                     run_ai_action(state, interface, zobrist).await
                 }
             }

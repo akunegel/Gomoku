@@ -15,6 +15,7 @@ pub trait Interface {
     fn wait(&mut self) -> Pin<Box<dyn Future<Output = ()> + '_>>;
     fn is_key_pressed(&self, key: char) -> bool;
     fn get_save_path(&mut self) -> Pin<Box<dyn Future<Output = Option<String>> + '_>>;
+    fn wait_for_continue<'a>(&'a mut self, state: &'a GameState) -> Pin<Box<dyn Future<Output = ()> + 'a>>;
     fn visualizer_enabled(&self) -> bool {
         false
     }
