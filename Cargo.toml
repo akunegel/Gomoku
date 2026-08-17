@@ -6,3 +6,4 @@ edition = "2024"
 [dependencies]
 macroquad = "0.4"
 rand = "0.9"
+futures-lite = "2.0"

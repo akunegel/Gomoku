@@ -19,16 +19,22 @@ fn window_conf() -> macroquad::prelude::Conf {
     }
 }
 
-#[macroquad::main(window_conf)]
-async fn main() {
+fn main() {
+    let is_cli;
     let mut interface: Box<dyn Interface> = loop {
         println!("Do you want to play CLI gomoku (1) or GUI gomoku (2)?");
         let mut choice = String::new();
         stdio::stdin().read_line(&mut choice).expect("Failed to read line");
 
         match choice.trim() {
-            "1" => break Box::new(CliInterface),
-            "2" => break Box::new(GuiInterface::new(ask_visualizer())),
+            "1" => {
+                is_cli = true;
+                break Box::new(CliInterface);
+            }
+            "2" => {
+                is_cli = false;
+                break Box::new(GuiInterface::new(ask_visualizer()));
+            }
             _ => println!("Invalid choice. Please enter 1 or 2.\n"),
         }
     };
@@ -47,7 +53,13 @@ async fn main() {
     };
     let zobrist = Zobrist::new();
     state.recompute_hash(&zobrist);
-    game_loop(&mut state, interface.as_mut(), &zobrist).await;
+    if is_cli {
+        futures_lite::future::block_on(game_loop(&mut state, interface.as_mut(), &zobrist));
+    } else {
+        macroquad::Window::from_config(window_conf(), async move {
+            game_loop(&mut state, interface.as_mut(), &zobrist).await;
+        });
+    }
 }
 
 fn ask_visualizer() -> bool {
