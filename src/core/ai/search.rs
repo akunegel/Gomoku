@@ -1,4 +1,8 @@
 use crate::core::GameState;
+use crate::core::rules::capture::is_in_board;
+use crate::core::zobrist::Zobrist;
+
+use super::evaluation::{pattern_value_after_place, CAPTURE_THREAT, VULNERABLE_PENALTY};
 
 pub fn get_candidates(state: &GameState) -> Vec<(usize, usize)> {
     let mut candidates = Vec::with_capacity(40);
@@ -39,40 +43,95 @@ pub fn get_candidates(state: &GameState) -> Vec<(usize, usize)> {
     candidates
 }
 
+pub fn winning_move(state: &GameState, zobrist: &Zobrist) -> Option<(usize, usize)> {
+    let p = state.current_player();
+    for (x, y) in get_candidates(state) {
+        let mut s = state.clone();
+        s.place_piece(x, y, zobrist);
+        if s.winner == Some(p) || s.has_five_aligned(p) {
+            return Some((x, y));
+        }
+    }
+    None
+}
+
+pub fn opponent_winning_move(state: &GameState, zobrist: &Zobrist) -> Option<(usize, usize)> {
+    let opp = if state.current_player() == 1 { 2 } else { 1 };
+    let mut view = state.clone();
+    view.turn_count = if opp == 1 { 0 } else { 1 };
+    winning_move(&view, zobrist)
+}
+
 pub fn move_heuristic(state: &GameState, x: usize, y: usize) -> i32 {
     let p = state.current_player();
     let opp = if p == 1 { 2 } else { 1 };
-    
-    let mut score = 0;
-    for &(dx, dy) in &[(1,0), (0,1), (1,1), (1,-1)] {
-        let (cp, op) = check_pattern_at(state, x, y, dx, dy, p);
-        let (co, oo) = check_pattern_at(state, x, y, dx, dy, opp);
-        
-        score += match (cp, op) {
-            (5, _) => 50_00_000, (4, 2) => 10_000_000, (4, 1) => 1_000_000, (3, 2) => 500_000, (3, 1) => 10_000, _ => cp * 10,
-        };
-        score += match (co, oo) {
-            (5, _) => 60_000_000,  (4, 2) => 20_000_000, (4, 1) => 15_000_000,  (3, 2) => 3_000_000, (3, 1) => 50_000, _ => co * 10,
-        };
-    }
-    let center_bias = (10 - (9 - x as i32).abs()) + (10 - (9 - y as i32).abs());
-    score + center_bias
-    // score + (10 - (9 - x as i32).abs() + 10 - (9 - y as i32).abs())
-}
+    let board = &state.board;
 
-pub fn check_pattern_at(state: &GameState, x: usize, y: usize, dx: i32, dy: i32, p: u8) -> (i32, i32) {
-    let mut count = 1;
-    let mut open = 0;
-    for &dir in &[1, -1] {
-        for i in 1..5 {
-            let nx = x as i32 + dx * i * dir;
-            let ny = y as i32 + dy * i * dir;
-            if nx < 0 || nx >= 19 || ny < 0 || ny >= 19 { break; }
-            let cell = state.board[ny as usize][nx as usize];
-            if cell == p { count += 1; }
-            else if cell == 0 { open += 1; break; }
-            else { break; }
+    let mut score: i64 = 0;
+
+    let mut captured = 0;
+    for &(dx, dy) in &[(1, 0), (0, 1), (1, 1), (1, -1)] {
+        let nx = x as i32 + dx;
+        let ny = y as i32 + dy;
+        let fx = x as i32 + 2 * dx;
+        let fy = y as i32 + 2 * dy;
+        let ax = x as i32 + 3 * dx;
+        let ay = y as i32 + 3 * dy;
+        if is_in_board(ay, ax)
+            && board[ny as usize][nx as usize] == opp
+            && board[fy as usize][fx as usize] == opp
+            && board[ay as usize][ax as usize] == p
+        {
+            captured += 2;
+        }
+        let bn = x as i32 - dx;
+        let bny = y as i32 - dy;
+        let bf = x as i32 - 2 * dx;
+        let bfy = y as i32 - 2 * dy;
+        let ba = x as i32 - 3 * dx;
+        let bay = y as i32 - 3 * dy;
+        if is_in_board(bay, ba)
+            && board[bny as usize][bn as usize] == opp
+            && board[bfy as usize][bf as usize] == opp
+            && board[bay as usize][ba as usize] == p
+        {
+            captured += 2;
         }
     }
-    (count, open)
+    if captured > 0 {
+        let after = state.captures[(p - 1) as usize] as i32 + captured;
+        if after >= 10 {
+            score += 90_000_000;
+        }
+        score += (captured as i64) * (CAPTURE_THREAT as i64 / 2);
+    }
+
+    for &(dx, dy) in &[(1, 0), (0, 1), (1, 1), (1, -1)] {
+        score += pattern_value_after_place(board, x, y, dx, dy, p) as i64;
+        score += pattern_value_after_place(board, x, y, dx, dy, opp) as i64;
+    }
+
+    for &(dx, dy) in &[(1, 0), (0, 1), (1, 1), (1, -1)] {
+        for &sign in &[1i32, -1i32] {
+            let nx = x as i32 + sign * dx;
+            let ny = y as i32 + sign * dy;
+            if is_in_board(ny, nx) && board[ny as usize][nx as usize] == p {
+                let bx = x as i32 - sign * dx;
+                let by = y as i32 - sign * dy;
+                let ax = nx + sign * dx;
+                let ay = ny + sign * dy;
+                let b_opp = is_in_board(by, bx) && board[by as usize][bx as usize] == opp;
+                let b_empty = is_in_board(by, bx) && board[by as usize][bx as usize] == 0;
+                let a_opp = is_in_board(ay, ax) && board[ay as usize][ax as usize] == opp;
+                let a_empty = is_in_board(ay, ax) && board[ay as usize][ax as usize] == 0;
+                if (b_opp && a_empty) || (b_empty && a_opp) {
+                    score -= VULNERABLE_PENALTY as i64;
+                }
+            }
+        }
+    }
+
+    score += ((10 - (9 - x as i32).abs()) + (10 - (9 - y as i32).abs())) as i64 * 100;
+
+    score.clamp(i32::MIN as i64, i32::MAX as i64) as i32
 }
