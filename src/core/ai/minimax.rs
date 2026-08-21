@@ -4,7 +4,7 @@ use crate::core::tt::{TranspositionTable, NodeType};
 use std::time::{Instant, Duration};
 use std::sync::{Arc, Mutex};
 
-use super::search::{get_candidates, move_heuristic};
+use super::search::{get_candidates, move_heuristic, opponent_winning_move, winning_move};
 use super::evaluation::evaluate_board;
 use super::report::{RootCandidate, SearchProgress, SearchReport, SearchStats, SharedProgress};
 
@@ -108,7 +108,27 @@ fn search_at_depth(
     progress: &SharedProgress,
 ) -> Option<(usize, usize)> {
     let is_maximizing = state.current_player() == 1;
-    let mut candidates: Vec<(i32, usize, usize)> = get_candidates(state)
+    let mut root_candidates: Vec<(usize, usize)> = get_candidates(state);
+
+    if let Some(win) = winning_move(state, zobrist) {
+        root_candidates.retain(|&c| c != win);
+        root_candidates.insert(0, win);
+    } else if opponent_winning_move(state, zobrist).is_some() {
+        let defensive: Vec<(usize, usize)> = root_candidates
+            .iter()
+            .copied()
+            .filter(|&(x, y)| {
+                let mut s = state.clone();
+                s.place_piece(x, y, zobrist);
+                winning_move(&s, zobrist).is_none()
+            })
+            .collect();
+        if !defensive.is_empty() {
+            root_candidates = defensive;
+        }
+    }
+
+    let mut candidates: Vec<(i32, usize, usize)> = root_candidates
         .into_iter()
         .map(|(x, y)| (move_heuristic(state, x, y), x, y))
         .collect();
